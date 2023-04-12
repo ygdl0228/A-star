@@ -25,7 +25,6 @@ class route:
         self.node_nums_QC = node_nums_QC
         self.max_speed = max_speed
         self.min_speed = min_speed
-        self.acceleration = 0
         self.max_acceleration = max_acceleration
         self.min_acceleration = min_acceleration
         self.cur_time = 0
@@ -190,16 +189,8 @@ class route:
         return self.env_infor(), reward, done
 
     def distance(self, cur_v, ad):
-        if self.AGV['speed'] + ad * self.acceleration >= self.min_speed and self.AGV[
-            'speed'] + ad * self.acceleration <= self.max_speed:
-            cur_v = self.AGV['speed']
-            next_v = cur_v + ad * self.acceleration
-        elif self.AGV['speed'] + ad * self.acceleration < self.min_speed:
-            cur_v = self.AGV['speed']
-            next_v = self.min_speed
-        elif self.AGV['speed'] + ad * self.acceleration > self.max_speed:
-            cur_v = self.AGV['speed']
-            next_v = self.max_speed
+        cur_v = self.AGV['speed']
+        next_v = cur_v + ad
         dis = (cur_v + next_v) / 2
         return next_v, dis
 

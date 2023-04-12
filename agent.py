@@ -102,12 +102,14 @@ class DQN:
         self.learning_rate = learning_rate
         self.lr_decay = lr_decay
         self.loss = nn.SmoothL1Loss()
+        self.action_dir_map = {0: 'up', 1: 'down', 2: 'left', 3: 'right'}
+        self.action_acc_map = [1, 0, -1]
+        self.move_direction = {'up': [0, 1], 'down': [0, -1], 'right': [1, 0], 'left': [-1, 0]}
         self.output_dir = output_dir
         self.output_dir = output_dir
         self.log_dir = output_dir + 'log/'
         self.weight_dir = output_dir + 'weight/'
         self.plot_dir = output_dir + 'plot/'
-
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         if not os.path.exists(self.log_dir):
@@ -117,7 +119,7 @@ class DQN:
         if not os.path.exists(self.weight_dir):
             os.mkdir(self.weight_dir)
 
-    def take_action(self, state, avail_action_mask, eps):
+    def take_action(self, state, avail_action_mask, eps,loc, destination, speed):
         # epsilon-贪婪策略采取动作
         # up down left right
         avail_action_dim = []
@@ -131,13 +133,15 @@ class DQN:
         for i in range(len(q_values[0])):
             if q_values[0][i] != -float('inf'):
                 avail_action_dim.append(i)
+
+
         if np.random.random() < max(self.min_epsilon, self.epsilon * (self.epsilon_decay ** eps)):
-            action = np.random.choice(avail_action_dim)
+            action = self.A_star_cost(avail_action_mask,loc, destination, speed)
         else:
             action = q_values.argmax().item()
         return action
 
-    def update(self, transition_dict, eps):
+    def update(self, transition_dict, eps, loc, destination):
         optimizer = torch.optim.Adam(self.q_net.parameters(),
                                      lr=max(self.min_lr, self.learning_rate * (self.lr_decay ** eps)))
         states = torch.tensor(transition_dict['states'],
@@ -188,3 +192,31 @@ class DQN:
                 self.q_net.state_dict())  # 更新目标网络
         self.count += 1
         return dqn_loss.detach().numpy()
+
+    def A_star_cost(self, avail_action_mask, loc, destination, speed):
+        avail_action = {}
+        cost = []
+        count = 0
+        for i in range(len(avail_action_mask)):
+            for j in range(len(avail_action_mask[0])):
+                count += 1
+                if avail_action_mask[i][j] == 1:
+                    avail_action[count] = [self.action_dir_map[j], self.action_acc_map[i]]
+        for _, action in avail_action.items():
+            new_loc = self.move_AGV(action[0], action[1], speed, loc)
+            cost.append(abs(new_loc[0] - loc[0]) + abs(new_loc[1] - loc[1]) + abs(loc[0] - destination[0]) + abs(
+                loc[1] - destination[1]))
+        best_action =cost.index(max(cost))
+        return best_action
+
+    def move_AGV(self, action, ad, speed, loc):
+        speed, dis = self.distance(speed, ad)
+        dx = self.move_direction[action][0] * dis
+        dy = self.move_direction[action][1] * dis
+        new_loc = [loc[0] + dx, loc[1] + dy]
+        return new_loc
+
+    def distance(self, cur_v, ad):
+        next_v = cur_v + ad
+        dis = (cur_v + next_v) / 2
+        return next_v, dis

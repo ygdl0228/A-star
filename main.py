@@ -49,7 +49,7 @@ def simulate(i, eps, agent, pipe):
     transition_dict = []
     while not done:
         avail_action_mask = env.get_avail_agent_action()
-        action = agent.take_action(state, avail_action_mask, eps)
+        action = agent.take_action(state, avail_action_mask, eps, env.AGV['loc'], env.AGV['destination'])
         next_state, reward, done = env.step(action)
         next_avail_action_mask = env.get_avail_agent_action()
         transition_dict.append((state, action, reward, next_state, next_avail_action_mask.tolist(), done))
